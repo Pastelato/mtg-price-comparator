@@ -70,22 +70,33 @@ public class ScryfallClient {
         public List<ScryfallCardResponse> searchAllPrintings(
                         String cardName) {
 
-                String query =
-
-                                "/cards/search?q=" +
-                                                cardName +
-                                                "&unique=prints";
-
                 ScryfallSearchResponse response =
 
                                 webClient.get()
-                                                .uri(query)
+
+                                                .uri(uriBuilder ->
+
+                                                uriBuilder
+
+                                                                .path("/cards/search")
+
+                                                                .queryParam(
+                                                                                "q",
+                                                                                "!" + cardName)
+
+                                                                .build())
+
                                                 .retrieve()
+
                                                 .bodyToMono(
                                                                 ScryfallSearchResponse.class)
+
                                                 .block();
 
-                if (response == null ||
+                if (
+
+                response == null ||
+
                                 response.getData() == null) {
 
                         return List.of();
