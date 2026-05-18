@@ -106,40 +106,44 @@ public class ScryfallClient {
         }
 
         public ScryfallCardResponse searchCardByEdition(
-
                         String cardName,
-
                         String edition) {
-
-                String query =
-
-                                "/cards/search?q=" +
-
-                                                cardName +
-
-                                                " set:\"" +
-
-                                                edition +
-
-                                                "\"";
 
                 ScryfallSearchResponse response =
 
                                 webClient.get()
-                                                .uri(query)
+
+                                                .uri(uriBuilder ->
+
+                                                uriBuilder
+
+                                                                .path("/cards/search")
+
+                                                                .queryParam(
+                                                                                "q",
+                                                                                "!" + cardName +
+                                                                                                " set:" + edition)
+
+                                                                .build())
+
                                                 .retrieve()
+
                                                 .bodyToMono(
                                                                 ScryfallSearchResponse.class)
+
                                                 .block();
 
-                if (response == null ||
+                if (
+
+                response == null ||
+
                                 response.getData() == null ||
+
                                 response.getData().isEmpty()) {
 
                         return null;
                 }
 
-                return response.getData()
-                                .get(0);
+                return response.getData().get(0);
         }
 }
