@@ -180,7 +180,8 @@ public class MtgStocksProvider
                 System.out.println(
                         "MATCH FOUND: " +
                                 foundName);
-
+                System.out.println(
+                        card.toPrettyString());
                 double ckPrice =
 
                         card.path("cardkingdom")
