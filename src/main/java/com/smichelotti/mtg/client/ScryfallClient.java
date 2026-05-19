@@ -5,8 +5,10 @@ import org.springframework.http.codec.support.DefaultClientCodecConfigurer;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.cache.annotation.Cacheable;
-
+import org.springframework.web.util.UriComponentsBuilder;
+import java.net.URI;
 import java.util.List;
 
 @Component
@@ -109,41 +111,31 @@ public class ScryfallClient {
                         String cardName,
                         String edition) {
 
-                ScryfallSearchResponse response =
+                URI uri =
 
-                                webClient.get()
+                                UriComponentsBuilder
 
-                                                .uri(uriBuilder ->
+                                                .fromPath("/cards/search")
 
-                                                uriBuilder
-
-                                                                .path("/cards/search")
-
-                                                                .queryParam(
-                                                                                "q",
-                                                                                "!" + cardName +
-                                                                                                " set:" + edition)
-
-                                                                .build())
-
-                                                .retrieve()
-
-                                                .bodyToMono(
-                                                                ScryfallSearchResponse.class)
-
-                                                .block();
-
-                if (
-
-                response == null ||
-
+                                                .queryParam(
+                                                                "q",
+                                                                "!" + cardName +
+                                                                                " set:" + edition)
+                                                .build()
+                                                .toUri();
+                System.out.println(
+                                "SCRYFALL URI: " + uri);
+                ScryfallSearchResponse response = webClient.get()
+                                .uri(uri)
+                                .retrieve()
+                                .bodyToMono(
+                                                ScryfallSearchResponse.class)
+                                .block();
+                if (response == null ||
                                 response.getData() == null ||
-
                                 response.getData().isEmpty()) {
-
                         return null;
                 }
-
                 return response.getData().get(0);
         }
 }
