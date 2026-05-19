@@ -71,7 +71,6 @@ public class ScryfallClient {
 
         public List<ScryfallCardResponse> searchAllPrintings(
                         String cardName) {
-
                 System.out.println(
                                 "SEARCH ALL PRINTINGS: " +
                                                 cardName);
@@ -80,7 +79,8 @@ public class ScryfallClient {
                                                 .path("/cards/search")
                                                 .queryParam(
                                                                 "q",
-                                                                cardName)
+                                                                "!" + cardName +
+                                                                                " include:extras")
                                                 .build())
                                 .retrieve()
                                 .bodyToMono(

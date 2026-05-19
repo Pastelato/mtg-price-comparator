@@ -12,48 +12,28 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CardEditionService {
 
-    private final ScryfallClient client;
+        private final ScryfallClient client;
 
-    public List<EditionDto> getEditions(
-            String cardName) {
+        public List<EditionDto> getEditions(
+                        String cardName) {
+                List<ScryfallCardResponse> cards = client.searchAllPrintings(
+                                cardName);
+                return cards.stream()
+                                .map((ScryfallCardResponse card) -> EditionDto.builder()
+                                                .setName(
+                                                                card.getSetName())
+                                                .setCode(
+                                                                card.getSet())
+                                                .collectorNumber(
+                                                                card.getCollectorNumber())
+                                                .imageUrl(
+                                                                card.getImageUris() != null
 
-        List<ScryfallCardResponse> cards =
-
-                client.searchAllPrintings(
-                        cardName);
-
-        return cards.stream()
-
-                .map((ScryfallCardResponse card) ->
-
-                EditionDto.builder()
-
-                        .setName(
-                                card.getSetName())
-
-                        .setCode(
-                                card.getSet())
-
-                        .collectorNumber(
-                                card.getCollectorNumber())
-
-                        .imageUrl(
-
-                                card.getImageUris() != null
-
-                                        ?
-
-                                        card.getImageUris()
-                                                .getNormal()
-
-                                        :
-
-                                        null)
-
-                        .build())
-
-                .distinct()
-
-                .toList();
-    }
+                                                                                ? card.getImageUris()
+                                                                                                .getNormal()
+                                                                                : null)
+                                                .build())
+                                .distinct()
+                                .toList();
+        }
 }
