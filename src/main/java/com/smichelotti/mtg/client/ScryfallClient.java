@@ -1,166 +1,159 @@
 package com.smichelotti.mtg.client;
 
 import com.smichelotti.mtg.dto.*;
-import org.springframework.http.codec.support.DefaultClientCodecConfigurer;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.web.util.UriComponentsBuilder;
-import java.net.URI;
 import java.util.List;
 
 @Component
 public class ScryfallClient {
 
-    private final WebClient webClient;
+ private final WebClient webClient;
 
-    public ScryfallClient() {
+ public ScryfallClient() {
 
-        ExchangeStrategies strategies = ExchangeStrategies.builder()
-                .codecs(configurer -> configurer.defaultCodecs()
-                        .maxInMemorySize(10 * 1024 * 1024))
-                .build();
+  ExchangeStrategies strategies = ExchangeStrategies.builder()
+    .codecs(configurer -> configurer.defaultCodecs()
+      .maxInMemorySize(10 * 1024 * 1024))
+    .build();
 
-        this.webClient = WebClient.builder()
-                .baseUrl("https://api.scryfall.com")
-                .exchangeStrategies(strategies)
-                .build();
-    }
+  this.webClient = WebClient.builder()
+    .baseUrl("https://api.scryfall.com")
+    .exchangeStrategies(strategies)
+    .build();
+ }
 
-    @Cacheable(value = "cards", key = "#name")
-    public ScryfallCardResponse searchCard(String name) {
+ @Cacheable(value = "cards", key = "#name")
+ public ScryfallCardResponse searchCard(String name) {
 
-        System.out.println(">>> CALLING SCRYFALL API <<<");
+  System.out.println(">>> CALLING SCRYFALL API <<<");
 
-        return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/cards/named")
-                        .queryParam("fuzzy", name)
-                        .build())
-                .retrieve()
-                .bodyToMono(ScryfallCardResponse.class)
-                .block();
-    }
+  return webClient.get()
+    .uri(uriBuilder -> uriBuilder
+      .path("/cards/named")
+      .queryParam("fuzzy", name)
+      .build())
+    .retrieve()
+    .bodyToMono(ScryfallCardResponse.class)
+    .block();
+ }
 
-    public List<String> autocomplete(String query) {
+ public List<String> autocomplete(String query) {
 
-        ScryfallAutocompleteResponse response = webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/cards/autocomplete")
-                        .queryParam("q", query)
-                        .build())
-                .retrieve()
-                .bodyToMono(ScryfallAutocompleteResponse.class)
-                .block();
+  ScryfallAutocompleteResponse response = webClient.get()
+    .uri(uriBuilder -> uriBuilder
+      .path("/cards/autocomplete")
+      .queryParam("q", query)
+      .build())
+    .retrieve()
+    .bodyToMono(ScryfallAutocompleteResponse.class)
+    .block();
 
-        return response.getData();
-    }
+  return response.getData();
+ }
 
-    public List<ScryfallSetDto> getSets() {
+ public List<ScryfallSetDto> getSets() {
 
-        ScryfallSetsResponse response = webClient.get()
-                .uri("/sets")
-                .retrieve()
-                .bodyToMono(ScryfallSetsResponse.class)
-                .block();
+  ScryfallSetsResponse response = webClient.get()
+    .uri("/sets")
+    .retrieve()
+    .bodyToMono(ScryfallSetsResponse.class)
+    .block();
 
-        return response.getData();
-    }
+  return response.getData();
+ }
 
-    public List<ScryfallCardResponse> searchAllPrintings(
-            String cardName) {
+ public List<ScryfallCardResponse> searchAllPrintings(
+   String cardName) {
 
-        System.out.println(
-                "SEARCH ALL PRINTINGS: " +
-                        cardName);
+  System.out.println(
+    "SEARCH ALL PRINTINGS: " +
+      cardName);
 
-        ScryfallSearchResponse response =
+  ScryfallSearchResponse response =
 
-                webClient.get()
+    webClient.get()
 
-                        .uri(uriBuilder ->
+      .uri(uriBuilder ->
 
-                        uriBuilder
+      uriBuilder
 
-                                .path("/cards/search")
+        .path("/cards/search")
 
-                                .queryParam(
-                                        "q",
-                                        "!" + "\"" +
-                                                cardName +
-                                                "\"")
+        .queryParam(
+          "q",
+          "name:\"" +
+            cardName +
+            "\" unique:prints")
 
-                                .build())
+        .build())
 
-                        .retrieve()
+      .retrieve()
 
-                        .bodyToMono(
-                                ScryfallSearchResponse.class)
+      .bodyToMono(
+        ScryfallSearchResponse.class)
 
-                        .block();
+      .block();
 
-        if (
+  if (response == null ||
+    response.getData() == null) {
 
-        response == null ||
+   return List.of();
+  }
 
-                response.getData() == null) {
+  return response.getData();
+ }
 
-            return List.of();
-        }
+ public ScryfallCardResponse searchCardByEdition(
+   String cardName,
+   String edition) {
 
-        return response.getData();
-    }
+  System.out.println(
+    "SCRYFALL SEARCH: " +
+      cardName +
+      " | " +
+      edition);
 
-    public ScryfallCardResponse searchCardByEdition(
-            String cardName,
-            String edition) {
+  ScryfallSearchResponse response =
 
-        System.out.println(
-                "SCRYFALL SEARCH: " +
-                        cardName +
-                        " | " +
-                        edition);
+    webClient.get()
 
-        ScryfallSearchResponse response =
+      .uri(uriBuilder ->
 
-                webClient.get()
+      uriBuilder
 
-                        .uri(uriBuilder ->
+        .path("/cards/search")
 
-                        uriBuilder
+        .queryParam(
+          "q",
+          "!" + "\"" +
+            cardName +
+            "\"" +
+            " set:" +
+            edition)
 
-                                .path("/cards/search")
+        .build())
 
-                                .queryParam(
-                                        "q",
-                                        "!" + "\"" +
-                                                cardName +
-                                                "\"" +
-                                                " set:" +
-                                                edition)
+      .retrieve()
 
-                                .build())
+      .bodyToMono(
+        ScryfallSearchResponse.class)
 
-                        .retrieve()
+      .block();
 
-                        .bodyToMono(
-                                ScryfallSearchResponse.class)
+  if (
 
-                        .block();
+  response == null ||
 
-        if (
+    response.getData() == null ||
 
-        response == null ||
+    response.getData().isEmpty()) {
 
-                response.getData() == null ||
+   return null;
+  }
 
-                response.getData().isEmpty()) {
-
-            return null;
-        }
-
-        return response.getData().get(0);
-    }
+  return response.getData().get(0);
+ }
 }
