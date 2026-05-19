@@ -14,149 +14,153 @@ import java.util.List;
 @Component
 public class ScryfallClient {
 
-        private final WebClient webClient;
+    private final WebClient webClient;
 
-        public ScryfallClient() {
+    public ScryfallClient() {
 
-                ExchangeStrategies strategies = ExchangeStrategies.builder()
-                                .codecs(configurer -> configurer.defaultCodecs()
-                                                .maxInMemorySize(10 * 1024 * 1024))
-                                .build();
+        ExchangeStrategies strategies = ExchangeStrategies.builder()
+                .codecs(configurer -> configurer.defaultCodecs()
+                        .maxInMemorySize(10 * 1024 * 1024))
+                .build();
 
-                this.webClient = WebClient.builder()
-                                .baseUrl("https://api.scryfall.com")
-                                .exchangeStrategies(strategies)
-                                .build();
-        }
+        this.webClient = WebClient.builder()
+                .baseUrl("https://api.scryfall.com")
+                .exchangeStrategies(strategies)
+                .build();
+    }
 
-        @Cacheable(value = "cards", key = "#name")
-        public ScryfallCardResponse searchCard(String name) {
+    @Cacheable(value = "cards", key = "#name")
+    public ScryfallCardResponse searchCard(String name) {
 
-                System.out.println(">>> CALLING SCRYFALL API <<<");
+        System.out.println(">>> CALLING SCRYFALL API <<<");
 
-                return webClient.get()
-                                .uri(uriBuilder -> uriBuilder
-                                                .path("/cards/named")
-                                                .queryParam("fuzzy", name)
-                                                .build())
-                                .retrieve()
-                                .bodyToMono(ScryfallCardResponse.class)
-                                .block();
-        }
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/cards/named")
+                        .queryParam("fuzzy", name)
+                        .build())
+                .retrieve()
+                .bodyToMono(ScryfallCardResponse.class)
+                .block();
+    }
 
-        public List<String> autocomplete(String query) {
+    public List<String> autocomplete(String query) {
 
-                ScryfallAutocompleteResponse response = webClient.get()
-                                .uri(uriBuilder -> uriBuilder
-                                                .path("/cards/autocomplete")
-                                                .queryParam("q", query)
-                                                .build())
-                                .retrieve()
-                                .bodyToMono(ScryfallAutocompleteResponse.class)
-                                .block();
+        ScryfallAutocompleteResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/cards/autocomplete")
+                        .queryParam("q", query)
+                        .build())
+                .retrieve()
+                .bodyToMono(ScryfallAutocompleteResponse.class)
+                .block();
 
-                return response.getData();
-        }
+        return response.getData();
+    }
 
-        public List<ScryfallSetDto> getSets() {
+    public List<ScryfallSetDto> getSets() {
 
-                ScryfallSetsResponse response = webClient.get()
-                                .uri("/sets")
-                                .retrieve()
-                                .bodyToMono(ScryfallSetsResponse.class)
-                                .block();
+        ScryfallSetsResponse response = webClient.get()
+                .uri("/sets")
+                .retrieve()
+                .bodyToMono(ScryfallSetsResponse.class)
+                .block();
 
-                return response.getData();
-        }
+        return response.getData();
+    }
 
-        public List<ScryfallCardResponse> searchAllPrintings(
-                        String cardName) {
+    public List<ScryfallCardResponse> searchAllPrintings(
+            String cardName) {
 
-                System.out.println(
-                                "SEARCH ALL PRINTINGS: " +
-                                                cardName);
+        System.out.println(
+                "SEARCH ALL PRINTINGS: " +
+                        cardName);
 
-                ScryfallSearchResponse response =
+        ScryfallSearchResponse response =
 
-                                webClient.get()
+                webClient.get()
 
-                                                .uri(uriBuilder ->
+                        .uri(uriBuilder ->
 
-                                                uriBuilder
+                        uriBuilder
 
-                                                                .path("/cards/search")
+                                .path("/cards/search")
 
-                                                                .queryParam(
-                                                                                "q",
-                                                                                "\"" +
-                                                                                                cardName +
-                                                                                                "\"")
-
-                                                                .build())
-
-                                                .retrieve()
-
-                                                .bodyToMono(
-                                                                ScryfallSearchResponse.class)
-
-                                                .block();
-
-                if (
-
-                response == null ||
-
-                                response.getData() == null) {
-
-                        return List.of();
-                }
-
-                return response.getData();
-        }
-
-        public ScryfallCardResponse searchCardByEdition(
-                        String cardName,
-                        String edition) {
-
-                System.out.println(
-                                "SCRYFALL SEARCH: " +
+                                .queryParam(
+                                        "q",
+                                        "!" + "\"" +
                                                 cardName +
-                                                " | " +
-                                                edition);
+                                                "\"")
 
-                ScryfallSearchResponse response =
+                                .build())
 
-                                webClient.get()
+                        .retrieve()
 
-                                                .uri(uriBuilder ->
+                        .bodyToMono(
+                                ScryfallSearchResponse.class)
 
-                                                uriBuilder
+                        .block();
 
-                                                                .path("/cards/search")
+        if (
 
-                                                                .queryParam(
-                                                                                "q",
-                                                                                cardName)
+        response == null ||
 
-                                                                .build())
+                response.getData() == null) {
 
-                                                .retrieve()
-
-                                                .bodyToMono(
-                                                                ScryfallSearchResponse.class)
-
-                                                .block();
-
-                if (
-
-                response == null ||
-
-                                response.getData() == null ||
-
-                                response.getData().isEmpty()) {
-
-                        return null;
-                }
-
-                return response.getData().get(0);
+            return List.of();
         }
+
+        return response.getData();
+    }
+
+    public ScryfallCardResponse searchCardByEdition(
+            String cardName,
+            String edition) {
+
+        System.out.println(
+                "SCRYFALL SEARCH: " +
+                        cardName +
+                        " | " +
+                        edition);
+
+        ScryfallSearchResponse response =
+
+                webClient.get()
+
+                        .uri(uriBuilder ->
+
+                        uriBuilder
+
+                                .path("/cards/search")
+
+                                .queryParam(
+                                        "q",
+                                        "!" + "\"" +
+                                                cardName +
+                                                "\"" +
+                                                " set:" +
+                                                edition)
+
+                                .build())
+
+                        .retrieve()
+
+                        .bodyToMono(
+                                ScryfallSearchResponse.class)
+
+                        .block();
+
+        if (
+
+        response == null ||
+
+                response.getData() == null ||
+
+                response.getData().isEmpty()) {
+
+            return null;
+        }
+
+        return response.getData().get(0);
+    }
 }
