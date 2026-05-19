@@ -111,31 +111,46 @@ public class ScryfallClient {
                         String cardName,
                         String edition) {
 
-                URI uri =
-
-                                UriComponentsBuilder
-
-                                                .fromPath("/cards/search")
-
-                                                .queryParam(
-                                                                "q",
-                                                                "!" + cardName +
-                                                                                " set:" + edition)
-                                                .build()
-                                                .toUri();
                 System.out.println(
-                                "SCRYFALL URI: " + uri);
-                ScryfallSearchResponse response = webClient.get()
-                                .uri(uri)
-                                .retrieve()
-                                .bodyToMono(
-                                                ScryfallSearchResponse.class)
-                                .block();
-                if (response == null ||
+                                "SCRYFALL SEARCH: " +
+                                                cardName +
+                                                " | " +
+                                                edition);
+
+                ScryfallSearchResponse response =
+
+                                webClient.get()
+
+                                                .uri(uriBuilder ->
+
+                                                uriBuilder
+
+                                                                .path("/cards/search")
+
+                                                                .queryParam(
+                                                                                "q",
+                                                                                cardName)
+
+                                                                .build())
+
+                                                .retrieve()
+
+                                                .bodyToMono(
+                                                                ScryfallSearchResponse.class)
+
+                                                .block();
+
+                if (
+
+                response == null ||
+
                                 response.getData() == null ||
+
                                 response.getData().isEmpty()) {
+
                         return null;
                 }
+
                 return response.getData().get(0);
         }
 }
