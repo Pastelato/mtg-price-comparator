@@ -88,8 +88,9 @@ public class ScryfallClient {
 
                                                                 .queryParam(
                                                                                 "q",
-                                                                                cardName +
-                                                                                                " include:extras")
+                                                                                "oracle:\"" +
+                                                                                                cardName +
+                                                                                                "\" include:extras")
 
                                                                 .build())
 
