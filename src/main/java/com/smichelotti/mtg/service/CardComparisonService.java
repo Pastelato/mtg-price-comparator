@@ -14,111 +14,114 @@ import java.util.concurrent.ExecutionException;
 @RequiredArgsConstructor
 public class CardComparisonService {
 
-    private final List<CardPriceProvider> providers;
-    private final HistoricalPriceService historicalPriceService;
+        private final List<CardPriceProvider> providers;
+        private final HistoricalPriceService historicalPriceService;
 
-    public List<CardPriceResult> compare(
+        public List<CardPriceResult> compare(
 
-            String cardName,
+                        String cardName,
 
-            String edition) {
+                        String edition) {
 
-        List<CompletableFuture<List<CardPriceResult>>>
+                List<CompletableFuture<List<CardPriceResult>>>
 
-        futures =
+                futures =
 
-                providers.stream()
+                                providers.stream()
 
-                        .map(provider ->
+                                                .map(provider ->
 
-                        CompletableFuture
-                                .supplyAsync(
+                                                CompletableFuture
+                                                                .supplyAsync(
 
-                                        () -> {
+                                                                                () -> {
 
-                                            System.out.println(
+                                                                                        System.out.println(
 
-                                                    "RUNNING PROVIDER: " +
+                                                                                                        "RUNNING PROVIDER: "
+                                                                                                                        +
 
-                                                            provider
-                                                                    .getSourceName());
+                                                                                                                        provider
+                                                                                                                                        .getSourceName());
 
-                                            return provider.search(
-                                                    cardName,
-                                                    edition);
-                                        }))
+                                                                                        return provider.search(
+                                                                                                        cardName,
+                                                                                                        edition);
+                                                                                }))
 
-                        .toList();
+                                                .toList();
 
-        List<CardPriceResult> results =
+                List<CardPriceResult> results =
 
-                futures.stream()
+                                futures.stream()
 
-                        .flatMap(future -> {
+                                                .flatMap(future -> {
 
-                            try {
+                                                        try {
 
-                                return future
-                                        .get()
-                                        .stream();
+                                                                return future
+                                                                                .get()
+                                                                                .stream();
 
-                            } catch (
-                                    InterruptedException |
+                                                        } catch (
+                                                                        InterruptedException |
 
-                                    ExecutionException e) {
+                                                                        ExecutionException e) {
 
-                                e.printStackTrace();
+                                                                e.printStackTrace();
 
-                                return List
-                                        .<CardPriceResult>of()
+                                                                return List
+                                                                                .<CardPriceResult>of()
 
-                                        .stream();
-                            }
-                        })
+                                                                                .stream();
+                                                        }
+                                                })
 
-                        .toList();
+                                                .toList();
 
-        results.forEach(
+                results.forEach(
 
-                historicalPriceService::save);
+                                historicalPriceService::save);
 
-        List<CardPriceResult> uniqueResults =
+                List<CardPriceResult> uniqueResults =
 
-                new ArrayList<>();
+                                new ArrayList<>();
 
-        for (CardPriceResult result : results) {
+                for (CardPriceResult result : results) {
 
-            boolean alreadyExists =
+                        boolean alreadyExists =
 
-                    uniqueResults.stream()
+                                        uniqueResults.stream()
 
-                            .anyMatch(existing ->
+                                                        .anyMatch(existing ->
 
-                            existing.getSource()
-                                    .equalsIgnoreCase(
-                                            result.getSource())
+                                                        existing.getSource()
+                                                                        .equalsIgnoreCase(
+                                                                                        result.getSource())
+                                                                        &&
+                                                                        existing.getCardName()
+                                                                                        .equalsIgnoreCase(
+                                                                                                        result.getCardName())
+                                                                        &&
+                                                                        existing.getEdition()
+                                                                                        .equalsIgnoreCase(
+                                                                                                        result.getEdition()));
 
-                                    &&
+                        if (!alreadyExists) {
 
-                                    existing.getCardName()
-                                            .equalsIgnoreCase(
-                                                    result.getCardName()));
+                                uniqueResults.add(
+                                                result);
+                        }
+                }
 
-            if (!alreadyExists) {
+                uniqueResults.sort(
 
-                uniqueResults.add(
-                        result);
-            }
+                                (a, b) ->
+
+                                a.getPrice()
+                                                .compareTo(
+                                                                b.getPrice()));
+
+                return uniqueResults;
         }
-
-        uniqueResults.sort(
-
-                (a, b) ->
-
-                a.getPrice()
-                        .compareTo(
-                                b.getPrice()));
-
-        return uniqueResults;
-    }
 }
