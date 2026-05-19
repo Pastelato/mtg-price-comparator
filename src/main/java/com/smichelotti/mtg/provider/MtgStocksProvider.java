@@ -159,6 +159,9 @@ public class MtgStocksProvider
 
                         card.path("name")
                                 .asText();
+                System.out.println(
+                        "CARD: " +
+                                foundName);
                 boolean foil =
 
                         card.path("foil")
