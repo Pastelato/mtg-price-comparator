@@ -71,25 +71,44 @@ public class ScryfallClient {
 
         public List<ScryfallCardResponse> searchAllPrintings(
                         String cardName) {
+
                 System.out.println(
                                 "SEARCH ALL PRINTINGS: " +
                                                 cardName);
-                ScryfallSearchResponse response = webClient.get()
-                                .uri(uriBuilder -> uriBuilder
-                                                .path("/cards/search")
-                                                .queryParam(
-                                                                "q",
-                                                                "!" + cardName +
-                                                                                " include:extras")
-                                                .build())
-                                .retrieve()
-                                .bodyToMono(
-                                                ScryfallSearchResponse.class)
-                                .block();
-                if (response == null ||
+
+                ScryfallSearchResponse response =
+
+                                webClient.get()
+
+                                                .uri(uriBuilder ->
+
+                                                uriBuilder
+
+                                                                .path("/cards/search")
+
+                                                                .queryParam(
+                                                                                "q",
+                                                                                cardName +
+                                                                                                " include:extras")
+
+                                                                .build())
+
+                                                .retrieve()
+
+                                                .bodyToMono(
+                                                                ScryfallSearchResponse.class)
+
+                                                .block();
+
+                if (
+
+                response == null ||
+
                                 response.getData() == null) {
+
                         return List.of();
                 }
+
                 return response.getData();
         }
 
