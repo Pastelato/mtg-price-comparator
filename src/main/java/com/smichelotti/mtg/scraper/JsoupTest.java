@@ -3,8 +3,12 @@ package com.smichelotti.mtg.scraper;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JsoupTest {
+
+    private static final Logger log = LoggerFactory.getLogger(JsoupTest.class);
 
     public static void main(String[] args) throws Exception {
 
@@ -25,6 +29,6 @@ public class JsoupTest {
 
         Document document = connection.get();
 
-        System.out.println(document.title());
+        log.info("PAGE TITLE: {}", document.title());
     }
 }

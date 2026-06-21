@@ -4,6 +4,9 @@ import com.smichelotti.mtg.entity.WatchlistEntity;
 import com.smichelotti.mtg.repository.WatchlistRepository;
 import com.smichelotti.mtg.service.WatchlistService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,6 +15,8 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/watchlist")
 public class WatchlistController {
+
+    private static final Logger log = LoggerFactory.getLogger(WatchlistController.class);
 
     private final WatchlistService service;
 
@@ -36,12 +41,15 @@ public class WatchlistController {
     }
 
     @DeleteMapping
-    public void deleteCard(
+    public ResponseEntity<Void> deleteCard(
 
             @RequestParam String cardName) {
 
-        repository.deleteByCardName(
-                cardName);
+        long rowsDeleted = service.deleteCard(cardName);
+
+        log.info("WATCHLIST DELETE cardName={} rowsDeleted={}", cardName, rowsDeleted);
+
+        return ResponseEntity.noContent().build();
     }
 
 }

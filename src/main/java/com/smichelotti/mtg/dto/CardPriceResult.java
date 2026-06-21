@@ -24,4 +24,8 @@ public class CardPriceResult {
     private String productUrl;
 
     private Boolean foil;
+
+    private String variant;
+
+    private String externalId;
 }

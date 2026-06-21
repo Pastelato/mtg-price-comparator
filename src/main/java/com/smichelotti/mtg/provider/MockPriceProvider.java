@@ -1,6 +1,7 @@
 package com.smichelotti.mtg.provider;
 
 import com.smichelotti.mtg.dto.CardPriceResult;
+import com.smichelotti.mtg.dto.ResolvedEdition;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -16,7 +17,7 @@ public class MockPriceProvider
     @Override
     public List<CardPriceResult> search(
             String cardName,
-            String edition) {
+            ResolvedEdition edition) {
 
         double randomPrice = 2.0 + (5.0 - 2.0)
                 * random.nextDouble();
@@ -26,7 +27,7 @@ public class MockPriceProvider
                 CardPriceResult.builder()
                         .source("MockTrader")
                         .cardName(cardName)
-                        .edition(edition)
+                        .edition(edition != null ? edition.setName() : null)
                         .price(
                                 BigDecimal.valueOf(
                                         randomPrice))

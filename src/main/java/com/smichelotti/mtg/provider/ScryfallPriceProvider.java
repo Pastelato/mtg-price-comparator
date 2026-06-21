@@ -2,8 +2,11 @@ package com.smichelotti.mtg.provider;
 
 import com.smichelotti.mtg.client.ScryfallClient;
 import com.smichelotti.mtg.dto.CardPriceResult;
+import com.smichelotti.mtg.dto.ResolvedEdition;
 import com.smichelotti.mtg.dto.ScryfallCardResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -15,23 +18,26 @@ import java.util.List;
 public class ScryfallPriceProvider
         implements CardPriceProvider {
 
+    private static final Logger log = LoggerFactory.getLogger(ScryfallPriceProvider.class);
+
     private final ScryfallClient client;
 
     @Override
     public List<CardPriceResult> search(
             String cardName,
-            String edition) {
+            ResolvedEdition edition) {
 
-        System.out.println("=== SCRYFALL PROVIDER ===");
+        log.debug("=== SCRYFALL PROVIDER ===");
 
         ScryfallCardResponse card;
 
         if (edition != null &&
-                !edition.isBlank()) {
+                edition.setCode() != null &&
+                !edition.setCode().isBlank()) {
 
             card = client.searchCardByEdition(
                     cardName,
-                    edition);
+                    edition.setCode());
 
         } else {
 
@@ -41,21 +47,21 @@ public class ScryfallPriceProvider
 
         if (card == null) {
 
-            System.out.println("CARD IS NULL");
+            log.warn("SCRYFALL PROVIDER: CARD IS NULL FOR cardName='{}'", cardName);
 
             return Collections.emptyList();
         }
 
         if (card.getPrices() == null) {
 
-            System.out.println("PRICES IS NULL");
+            log.warn("SCRYFALL PROVIDER: PRICES IS NULL FOR card='{}'", card.getName());
 
             return Collections.emptyList();
         }
 
         if (card.getPrices().getUsd() == null) {
 
-            System.out.println("USD PRICE IS NULL");
+            log.warn("SCRYFALL PROVIDER: USD PRICE IS NULL FOR card='{}'", card.getName());
 
             return Collections.emptyList();
         }

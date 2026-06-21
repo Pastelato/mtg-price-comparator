@@ -1,273 +1,187 @@
 package com.smichelotti.mtg.provider;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smichelotti.mtg.config.MtgStocksProperties;
 import com.smichelotti.mtg.dto.CardPriceResult;
+import com.smichelotti.mtg.dto.MtgStocksPrintDto;
+import com.smichelotti.mtg.dto.MtgStocksSetLinkDto;
+import com.smichelotti.mtg.dto.ResolvedEdition;
 import lombok.RequiredArgsConstructor;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
-public class MtgStocksProvider
-        implements CardPriceProvider {
+public class MtgStocksProvider implements CardPriceProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(MtgStocksProvider.class);
+
+    private static final Pattern VARIANT_PATTERN = Pattern.compile("\\((.*?)\\)");
+
+    private final MtgStocksProperties properties;
+
+    private final MtgStocksScraper scraper;
+
+    private final EditionNameNormalizer editionNameNormalizer = new EditionNameNormalizer();
 
     @Override
-    public List<CardPriceResult> search(
-
-            String cardName,
-
-            String edition) {
-
+    public List<CardPriceResult> search(String cardName, ResolvedEdition resolvedEdition) {
+        log.debug(
+                "MTGSTOCKS INPUT -> card='{}' code='{}' name='{}'",
+                cardName,
+                resolvedEdition == null ? null : resolvedEdition.setCode(),
+                resolvedEdition == null ? null : resolvedEdition.setName());
         List<CardPriceResult> results = new ArrayList<>();
 
-        if (
-
-        edition == null ||
-
-                edition.isBlank()) {
-
+        if (resolvedEdition == null
+                || resolvedEdition.setName() == null
+                || resolvedEdition.setName().isBlank()) {
+            log.warn("MTGSTOCKS EARLY EXIT -> edition name missing");
             return results;
         }
 
+        String edition = resolvedEdition.setName();
+
         try {
+            log.debug("MTGSTOCKS SEARCH: {} | {}", cardName, edition);
 
-            System.out.println(
-                    "MTGSTOCKS SEARCH: " +
-                            cardName +
-                            " | " +
-                            edition);
+            List<MtgStocksSetLinkDto> links = scraper.fetchSetsIndex();
 
-            String setsUrl = "https://www.mtgstocks.com/sets";
+            List<String> candidates = editionNameNormalizer.candidatesFor(resolvedEdition);
 
-            Document setsDocument =
-
-                    Jsoup.connect(
-                            setsUrl)
-
-                            .userAgent(
-                                    "Mozilla/5.0")
-
-                            .timeout(10000)
-
-                            .get();
+            log.debug("MTGSTOCKS CANDIDATES -> {}", candidates);
 
             String setUrl = null;
+            String matchedCandidate = null;
 
-            for (Element link : setsDocument.select("a")) {
+            for (String candidate : candidates) {
 
-                String text = link.text();
+                for (MtgStocksSetLinkDto link : links) {
 
-                if (
+                    if (link.text().equalsIgnoreCase(candidate)) {
+                        setUrl = properties.baseUrl() + link.href();
+                        matchedCandidate = candidate;
+                        break;
+                    }
+                }
 
-                text.equalsIgnoreCase(
-                        edition)) {
-
-                    setUrl = "https://www.mtgstocks.com" +
-
-                            link.attr(
-                                    "href");
-
+                if (setUrl != null) {
                     break;
                 }
+            }
+
+            if (setUrl != null) {
+                log.debug("MTGSTOCKS MATCHED CANDIDATE -> {}", matchedCandidate);
             }
 
             if (setUrl == null) {
 
-                System.out.println(
-                        "SET URL NOT FOUND");
+                log.warn("SET URL NOT FOUND");
+                log.warn("REQUESTED EDITION: {}", edition);
 
-                return results;
-            }
+                int count = 0;
 
-            System.out.println(
-                    "SET URL: " +
-                            setUrl);
+                for (MtgStocksSetLinkDto link : links) {
 
-            Document setDocument =
+                    log.debug("SET FOUND: {}", link.text());
 
-                    Jsoup.connect(
-                            setUrl)
+                    count++;
 
-                            .userAgent(
-                                    "Mozilla/5.0")
-
-                            .timeout(10000)
-
-                            .get();
-
-            Element jsonElement =
-
-                    setDocument.selectFirst(
-                            "#ng-state");
-
-            if (jsonElement == null) {
-
-                System.out.println(
-                        "NG STATE NOT FOUND");
-
-                return results;
-            }
-
-            String json = jsonElement.html();
-
-            ObjectMapper mapper = new ObjectMapper();
-
-            JsonNode root = mapper.readTree(json);
-
-            JsonNode printsNode = null;
-
-            Iterator<JsonNode> values = root.elements();
-
-            while (values.hasNext()) {
-
-                JsonNode node = values.next();
-
-                JsonNode prints = node.path("b")
-                        .path("prints");
-
-                if (prints.isArray()) {
-
-                    printsNode = prints;
-
-                    break;
+                    if (count >= 50) {
+                        break;
+                    }
                 }
-            }
 
-            if (printsNode == null) {
-
-                System.out.println(
-                        "PRINTS NODE NOT FOUND");
-
+                log.info("MTGSTOCKS RETURNED {} RESULTS", results.size());
                 return results;
             }
 
-            System.out.println(
-                    "TOTAL PRINTS: " +
-                            printsNode.size());
+            log.debug("SET URL FOUND: {}", setUrl);
 
-            for (JsonNode card : printsNode) {
+            List<MtgStocksPrintDto> prints = scraper.fetchSetDetail(setUrl);
 
-                String foundName =
+            int matchesFound = 0;
 
-                        card.path("name")
-                                .asText();
-                System.out.println(
-                        "CARD: " +
-                                foundName);
-                boolean foil =
+            for (MtgStocksPrintDto card : prints) {
 
-                        card.path("foil")
-                                .asBoolean(false);
-                if (
+                String foundName = card.name();
 
-                !foundName
+                if (properties.debugCards()) {
+                    log.debug("CARD: {}", foundName);
+                }
 
-                        .toLowerCase()
+                boolean foil = card.foil();
 
-                        .contains(
+                log.debug("CHECKING PRINT -> found='{}' target='{}'", foundName, cardName);
 
-                                cardName
-                                        .toLowerCase())) {
-
+                if (!normalizeCardName(foundName).equals(normalizeCardName(cardName))) {
                     continue;
                 }
 
-                System.out.println(
-                        "MATCH FOUND: " +
-                                foundName);
-                System.out.println(
-                        card.toPrettyString());
-                double ckPrice =
+                matchesFound++;
 
-                        card.path("cardkingdom")
-                                .path("latestPrice")
-                                .path("avg")
-                                .asDouble(0.0);
+                log.debug("MATCH FOUND -> {}", foundName);
 
-                double tcgPrice =
+                if (properties.debugCards()) {
+                    log.debug("MATCH FOUND: {}", foundName);
+                }
 
-                        card.path("tcgplayer")
-                                .path("latestPrice")
-                                .path("avg")
-                                .asDouble(0.0);
+                double ckPrice = card.cardKingdomAvg();
 
-                String productUrl =
+                double tcgPrice = card.tcgplayerAvg();
 
-                        "https://www.mtgstocks.com/prints/" +
+                String productUrl = properties.printUrl(card.id());
 
-                                card.path("id")
-                                        .asText();
+                String externalId = "mtgstocks:" + card.id();
+
+                String variant = extractVariant(foundName);
 
                 if (ckPrice > 0) {
 
-                    results.add(
-
-                            CardPriceResult.builder()
-
-                                    .source(
-                                            "Card Kingdom")
-
-                                    .cardName(
-                                            foundName)
-
-                                    .edition(
-                                            edition)
-
-                                    .price(
-                                            BigDecimal.valueOf(
-                                                    ckPrice))
-
-                                    .currency(
-                                            "USD")
-
-                                    .productUrl(
-                                            productUrl)
-                                    .foil(foil)
-                                    .build());
+                    results.add(CardPriceResult.builder()
+                            .source("Card Kingdom")
+                            .cardName(foundName)
+                            .edition(edition)
+                            .price(BigDecimal.valueOf(ckPrice))
+                            .currency("USD")
+                            .productUrl(productUrl)
+                            .foil(foil)
+                            .variant(variant)
+                            .externalId(externalId)
+                            .build());
                 }
 
                 if (tcgPrice > 0) {
 
-                    results.add(
-
-                            CardPriceResult.builder()
-
-                                    .source(
-                                            "TCGPlayer")
-
-                                    .cardName(
-                                            foundName)
-
-                                    .edition(
-                                            edition)
-
-                                    .price(
-                                            BigDecimal.valueOf(
-                                                    tcgPrice))
-
-                                    .currency(
-                                            "USD")
-
-                                    .productUrl(
-                                            productUrl)
-
-                                    .build());
+                    results.add(CardPriceResult.builder()
+                            .source("TCGPlayer")
+                            .cardName(foundName)
+                            .edition(edition)
+                            .price(BigDecimal.valueOf(tcgPrice))
+                            .currency("USD")
+                            .productUrl(productUrl)
+                            .foil(foil)
+                            .variant(variant)
+                            .externalId(externalId)
+                            .build());
                 }
             }
+
+            log.info("TOTAL MATCHES FOUND -> {}", matchesFound);
+
+            log.info("MTGSTOCKS RETURNED {} RESULTS", results.size());
 
             return results;
 
         } catch (Exception e) {
 
-            e.printStackTrace();
+            log.error("MTGSTOCKS PROVIDER ERROR", e);
 
             return List.of();
         }
@@ -275,7 +189,29 @@ public class MtgStocksProvider
 
     @Override
     public String getSourceName() {
-
         return "MTGStocks";
+    }
+
+    String normalizeCardName(String name) {
+
+        return VARIANT_PATTERN.matcher(name)
+                .replaceAll("")
+                .trim()
+                .toLowerCase()
+                .replace('\u2019', '\'')
+                .replaceAll("\\s+", " ");
+    }
+
+    String extractVariant(String name) {
+
+        Matcher matcher = VARIANT_PATTERN.matcher(name);
+
+        List<String> parts = new ArrayList<>();
+
+        while (matcher.find()) {
+            parts.add(matcher.group(1));
+        }
+
+        return parts.isEmpty() ? null : String.join(", ", parts);
     }
 }

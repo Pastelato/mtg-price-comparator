@@ -12,9 +12,15 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 
 import java.time.Duration;
+import java.util.Map;
 
 @Configuration
 public class RedisConfig {
+
+        // Scoped to our own DTOs (+ the JDK container/boxed types Jackson needs to wrap
+        // them) instead of allowIfSubType(Object.class), which accepted any class on the
+        // classpath as a polymorphic deserialization target. See Fase 6 security review.
+        private static final String DTO_PACKAGE = "com.smichelotti.mtg.dto";
 
         @Bean
         public RedisCacheManager cacheManager(
@@ -24,21 +30,31 @@ public class RedisConfig {
 
                 objectMapper.activateDefaultTyping(
                                 BasicPolymorphicTypeValidator.builder()
-                                                .allowIfSubType(Object.class)
+                                                .allowIfSubType(DTO_PACKAGE)
+                                                .allowIfSubType("java.util.")
+                                                .allowIfSubType("java.lang.")
                                                 .build(),
                                 ObjectMapper.DefaultTyping.NON_FINAL,
                                 JsonTypeInfo.As.PROPERTY);
 
                 GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
-                RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+                RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                                 .entryTtl(Duration.ofMinutes(10))
                                 .serializeValuesWith(
                                                 RedisSerializationContext.SerializationPair
                                                                 .fromSerializer(serializer));
 
+                Map<String, RedisCacheConfiguration> perCacheTtl = Map.of(
+                                "cards", defaultConfig.entryTtl(Duration.ofMinutes(15)),
+                                "cardsByEdition", defaultConfig.entryTtl(Duration.ofMinutes(15)),
+                                "scryfallSets", defaultConfig.entryTtl(Duration.ofHours(24)),
+                                "mtgstocksSetsIndex", defaultConfig.entryTtl(Duration.ofHours(24)),
+                                "mtgstocksSetDetail", defaultConfig.entryTtl(Duration.ofHours(6)));
+
                 return RedisCacheManager.builder(connectionFactory)
-                                .cacheDefaults(config)
+                                .cacheDefaults(defaultConfig)
+                                .withInitialCacheConfigurations(perCacheTtl)
                                 .build();
         }
 }

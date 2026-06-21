@@ -1,6 +1,8 @@
 package com.smichelotti.mtg.client;
 
 import com.smichelotti.mtg.dto.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -9,6 +11,8 @@ import java.util.List;
 
 @Component
 public class ScryfallClient {
+
+ private static final Logger log = LoggerFactory.getLogger(ScryfallClient.class);
 
  private final WebClient webClient;
 
@@ -28,7 +32,7 @@ public class ScryfallClient {
  @Cacheable(value = "cards", key = "#name")
  public ScryfallCardResponse searchCard(String name) {
 
-  System.out.println(">>> CALLING SCRYFALL API <<<");
+  log.debug(">>> CALLING SCRYFALL API <<<");
 
   return webClient.get()
     .uri(uriBuilder -> uriBuilder
@@ -54,6 +58,7 @@ public class ScryfallClient {
   return response.getData();
  }
 
+ @Cacheable(value = "scryfallSets")
  public List<ScryfallSetDto> getSets() {
 
   ScryfallSetsResponse response = webClient.get()
@@ -68,9 +73,7 @@ public class ScryfallClient {
  public List<ScryfallCardResponse> searchAllPrintings(
    String cardName) {
 
-  System.out.println(
-    "SEARCH ALL PRINTINGS: " +
-      cardName);
+  log.debug("SEARCH ALL PRINTINGS: {}", cardName);
 
   ScryfallSearchResponse response =
 
@@ -106,15 +109,15 @@ public class ScryfallClient {
   return response.getData();
  }
 
+ @Cacheable(
+   value = "cardsByEdition",
+   key = "#cardName.toLowerCase() + '|' + #edition.toLowerCase()",
+   unless = "#result == null")
  public ScryfallCardResponse searchCardByEdition(
    String cardName,
    String edition) {
 
-  System.out.println(
-    "SCRYFALL SEARCH: " +
-      cardName +
-      " | " +
-      edition);
+  log.debug("SCRYFALL SEARCH: {} | {}", cardName, edition);
 
   ScryfallSearchResponse response =
 
